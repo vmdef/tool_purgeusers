@@ -27,6 +27,7 @@
  * @copyright   2023 Victor Deniz <victor@moodle.com>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+use tool_purgeusers\manager;
 
 define('CLI_SCRIPT', true);
 
@@ -177,6 +178,8 @@ if ($options['help']) {
     die();
 }
 
+$manager = new manager();
+
 // TODO: Check if the user has the required permissions to run this script.
 // TODO: Check the COMPONENTS array to make sure the tables exists and there are no duplicated aliases.
 // Look for deleted users.
@@ -205,4 +208,10 @@ foreach (COMPONENTS as $component) {
     $sqlwhere = '';
     //print_object($inparams);
     //print_object($DB->get_fieldset_sql($sql, $inparams));
+}
+
+// At this point $inparams contains the list of users that don't have activity.
+foreach ($inparams as $id) {
+    // Remove the user record.
+    $manager->purge_user($id);
 }

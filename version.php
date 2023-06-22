@@ -26,6 +26,6 @@ defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'tool_purgeusers';
 $plugin->release = '0.1.0';
-$plugin->version = 2023062100;
+$plugin->version = 2023062200;
 $plugin->requires = 2023042400;
 $plugin->maturity = MATURITY_ALPHA;
