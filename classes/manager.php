@@ -47,6 +47,20 @@ class manager {
         $this->logging = true;
     }
 
+        /**
+     * Purge a list of users.
+     *
+     * Remove the user records from the database.
+     *
+     * @param array $userids The user ids.
+     * @return void
+     */
+    public function purge_users(array $userids) {
+        foreach ($userids as $userid) {
+            $this->purge_user($userid);
+        }
+    }
+
     /**
      * Purge a user.
      *
@@ -55,7 +69,7 @@ class manager {
      * @param integer $userid The user id.
      * @return void
      */
-    public function purge_user(int $userid) {
+    private function purge_user(int $userid) {
         global $DB;
 
         if ($this->backup) {
@@ -91,7 +105,7 @@ class manager {
         $backuprecord->userid = $userid;
         $backuprecord->tableid = $id;
         $backuprecord->timestamp = time();
-        $backuprecord->record = serialize($record);
+        $backuprecord->record = json_encode($record);
         $DB->insert_record('tool_purgeusers_backup', $backuprecord);
     }
 
