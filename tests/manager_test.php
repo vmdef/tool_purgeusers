@@ -27,6 +27,38 @@ namespace tool_purgeusers;
  */
 class manager_test extends \advanced_testcase {
 
+    public function test_get_users_to_purge() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $manager = new manager();
+
+        $course = $this->getDataGenerator()->create_course();
+        $forum = $this->getDataGenerator()->create_module('forum', ['course' => $course->id]);
+
+        $user1 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $user2 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $user3 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+
+        // user1 has a post.
+        $record = new \stdClass();
+        $record->course = $course->id;
+        $record->userid = $user1->id;
+        $record->forum = $forum->id;
+        $discussion = $this->getDataGenerator()->get_plugin_generator('mod_forum')->create_discussion($record);
+
+        // user1 and user2 are deleted.
+        delete_user($user1);
+        delete_user($user2);
+
+        $users = $manager->get_users_to_purge();
+
+        // Just user2 should be returned: is deleted and doesn't have activity.
+        $this->assertEquals(1, count($users));
+        $this->assertEquals($user2->id, $users[0]);
+    }
+
     /**
      * Test for the get_purge_users method.
      *
