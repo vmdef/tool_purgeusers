@@ -16,6 +16,9 @@
 
 namespace tool_purgeusers;
 
+use function PHPUnit\Framework\assertEquals;
+use function PHPUnit\Framework\assertNotEmpty;
+
 /**
  * Tool purgeusers manager class.
  *
@@ -27,6 +30,12 @@ namespace tool_purgeusers;
  */
 class manager_test extends \advanced_testcase {
 
+    /**
+     * Test for the get_purge_users method.
+     *
+     * @covers ::get_purge_users
+     * @return void
+     */
     public function test_get_users_to_purge() {
         global $DB;
 
@@ -57,12 +66,14 @@ class manager_test extends \advanced_testcase {
         // Just user2 should be returned: is deleted and doesn't have activity.
         $this->assertEquals(1, count($users));
         $this->assertEquals($user2->id, $users[0]);
+        $this->assertEquals(1, $DB->count_records('tool_purgeusers_log'));
+        $this->assertEquals($user1->id, $DB->get_field('tool_purgeusers_log', 'userid', ['userid' => $user1->id]));
     }
 
     /**
-     * Test for the get_purge_users method.
+     * Test for the purge_users method.
      *
-     * @covers ::get_purge_users
+     * @covers ::purge_users
      * @dataProvider purge_users_provider
      * @return void
      */

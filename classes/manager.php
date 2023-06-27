@@ -91,6 +91,18 @@ class manager
                     'field' => 'userid',
                     'action' => self::TABLECHECK,
                 ],
+                [
+                    'table' => 'forum_discussions',
+                    'alias' => 'fd',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+                [
+                    'table' => 'forum_discussions',
+                    'alias' => 'fd2',
+                    'field' => 'usermodified',
+                    'action' => self::TABLECHECK,
+                ]
             ],
         ],
         'badges' => [
@@ -143,12 +155,13 @@ class manager
         ],
     ];
 
-    const SUPENSIONNOTIFIED = 0;
-    const SUSPENDED = 1;
-    const DELETED = 2;
+    const NODELETE = 0;
+    const SUPENSIONNOTIFIED = 1;
+    const SUSPENDED = 2;
+    const DELETED = 3;
 
     // We need to limit the number of users to be deleted per execution to avoid timeouts or memory issues.
-    const MAX_USERS_PER_QUERY = 10;
+    const MAX_USERS_PER_QUERY = 1000;
 
     /** @var boolean $backup Keep a backup of the deleted records. */
     private bool $backup;
@@ -171,7 +184,7 @@ class manager
     /**
      * Get the users to purge.
      *
-     * @return array The ids of the users to purge.
+     * @return int[] The ids of the users to purge.
      */
     public function get_users_to_purge(): array {
         global $DB;
@@ -185,14 +198,17 @@ class manager
         // Look for deleted users.
         $sql = "SELECT u.id
                   FROM {user} u
-                 WHERE deleted = 1";
-        $rs = $DB->get_recordset_sql($sql, null, 0, self::MAX_USERS_PER_QUERY);
+             LEFT JOIN {tool_purgeusers_log} l ON l.userid = u.id
+                       AND l.status != ?
+                 WHERE u.deleted = 1";
+        $rs = $DB->get_recordset_sql($sql, [self::NODELETE], 0, self::MAX_USERS_PER_QUERY);
 
-        if (empty($rs)) {
+        if (!$rs->valid()) {
             // If there are no deleted users, we can stop here.
             return [];
         }
-        [$insql, $inparams] = $DB->get_in_or_equal(array_keys(iterator_to_array($rs, true)));
+        $initialusers = array_keys(iterator_to_array($rs, true));
+        [$insql, $inparams] = $DB->get_in_or_equal($initialusers);
 
         foreach (self::COMPONENTS as $component) {
             foreach ($component as $type) {
@@ -218,6 +234,14 @@ class manager
                 $sqlwhere = '';
             }
         }
+        $userswithcontent = array_diff($initialusers, $inparams);
+        foreach ($userswithcontent as $userid) {
+            if ($this->logging) {
+                // Log the user status.
+                $this->log($userid, self::NODELETE);
+            }
+        }
+        // Log users to not delete, likely they have content on the site.
         // At this point $inparams contains the list of users that don't have activity.
         return $inparams;
     }
@@ -227,7 +251,7 @@ class manager
      *
      * Remove the user records from the database.
      *
-     * @param array $userids The user ids.
+     * @param int[] $userids The user ids.
      * @return void
      */
     public function purge_users(array $userids) {
@@ -241,7 +265,7 @@ class manager
      *
      * Remove the user record from the database.
      *
-     * @param integer $userid The user id.
+     * @param int $userid The user id.
      * @return void
      */
     private function purge_user(int $userid) {
@@ -266,8 +290,8 @@ class manager
      * The record is serialized before saving it to the database.
      *
      * @param string $table The table name.
-     * @param integer $id The record id.
-     * @param integer $userid The user id the record belongs to.
+     * @param int $id The record id.
+     * @param int $userid The user id the record belongs to.
      * @return void
      */
     private function backup_record(string $table, int $id, int $userid) {
@@ -276,7 +300,7 @@ class manager
         $record = $DB->get_record($table, ['id' => $id], '*', MUST_EXIST);
         // Before deleting the user, we need to create a backup of the record.
         $backuprecord = new \stdClass();
-        $backuprecord->table = $table;
+        $backuprecord->tablename = $table;
         $backuprecord->userid = $userid;
         $backuprecord->tableid = $id;
         $backuprecord->timestamp = time();
@@ -293,8 +317,8 @@ class manager
      * - SUSPENDED: The user has been suspended.
      * - DELETED: The user has been deleted.
      *
-     * @param integer $userid The user id.
-     * @param integer $status The user status.
+     * @param int $userid The user id.
+     * @param int $status The user status.
      * @return void
      */
     private function log(int $userid, int $status) {
