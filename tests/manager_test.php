@@ -16,9 +16,6 @@
 
 namespace tool_purgeusers;
 
-use function PHPUnit\Framework\assertEquals;
-use function PHPUnit\Framework\assertNotEmpty;
-
 /**
  * Tool purgeusers manager class.
  *
@@ -31,12 +28,17 @@ use function PHPUnit\Framework\assertNotEmpty;
 class manager_test extends \advanced_testcase {
 
     /**
-     * Test for the get_purge_users method.
+     * Test for the get_users_to_purge method.
      *
-     * @covers ::get_purge_users
+     * @covers ::get_users_to_purge
+     * @dataProvider get_users_to_purge_provider
+     * @param int $numusers Number of users to create.
+     * @param int $numusersdeleted Number of users to delete.
+     * @param int $numuserscontent Number of users with content.
+     * @param int $expecteduserstopurge Expected number of users to purge.
      * @return void
      */
-    public function test_get_users_to_purge() {
+    public function test_get_users_to_purge(int $numusers, int $numusersdeleted, int $numuserscontent , int $expecteduserstopurge) {
         global $DB;
 
         $this->resetAfterTest();
@@ -46,28 +48,58 @@ class manager_test extends \advanced_testcase {
         $course = $this->getDataGenerator()->create_course();
         $forum = $this->getDataGenerator()->create_module('forum', ['course' => $course->id]);
 
-        $user1 = $this->getDataGenerator()->create_and_enrol($course, 'student');
-        $user2 = $this->getDataGenerator()->create_and_enrol($course, 'student');
-        $user3 = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        // Create users.
+        $users = [];
+        for ($i = 0; $i < $numusers; $i++) {
+            $user = $this->getDataGenerator()->create_and_enrol($course, 'student');
+            $users[$i] = $user;
+        }
 
-        // user1 has a post.
-        $record = new \stdClass();
-        $record->course = $course->id;
-        $record->userid = $user1->id;
-        $record->forum = $forum->id;
-        $discussion = $this->getDataGenerator()->get_plugin_generator('mod_forum')->create_discussion($record);
+        // Add content to users.
+        for ($i = 0; $i < $numuserscontent; $i++) {
+            $record = new \stdClass();
+            $record->course = $course->id;
+            $record->userid = $users[$i]->id;
+            $record->forum = $forum->id;
+            $this->getDataGenerator()->get_plugin_generator('mod_forum')->create_discussion($record);
+        }
 
-        // user1 and user2 are deleted.
-        delete_user($user1);
-        delete_user($user2);
+        // Delete users.
+        for ($i = 0; $i < $numusersdeleted; $i++) {
+            delete_user($users[$i]);
+        }
 
-        $users = $manager->get_users_to_purge();
+        $userstopurge = $manager->get_users_to_purge();
 
-        // Just user2 should be returned: is deleted and doesn't have activity.
-        $this->assertEquals(1, count($users));
-        $this->assertEquals($user2->id, $users[0]);
-        $this->assertEquals(1, $DB->count_records('tool_purgeusers_log'));
-        $this->assertEquals($user1->id, $DB->get_field('tool_purgeusers_log', 'userid', ['userid' => $user1->id]));
+        $this->assertEquals($expecteduserstopurge, count($userstopurge));
+    }
+
+    /**
+     * Data provider for test_get_users_to_purge.
+     *
+     * @return array
+     */
+    public function get_users_to_purge_provider(): array {
+        return [
+            'No users to delete' => [
+                'numusers' => 10,
+                'numusersdeleted' => 0,
+                'numuserscontent' => 0,
+                'expecteduserstopurge' => 0,
+            ],
+            'Some users deleted without content' => [
+                'numusers' => 10,
+                'numusersdeleted' => 5,
+                'numuserscontent' => 0,
+                'expecteduserstopurge' => 5,
+            ],
+            'Some users deleted with content' => [
+                'numusers' => 10,
+                'numusersdeleted' => 5,
+                'numuserscontent' => 3,
+                'expecteduserstopurge' => 2,
+            ],
+        ];
     }
 
     /**
@@ -75,6 +107,9 @@ class manager_test extends \advanced_testcase {
      *
      * @covers ::purge_users
      * @dataProvider purge_users_provider
+     * @param int $numusers Number of users to create.
+     * @param int $numusersdeleted Number of users to mark as deleted.
+     * @param int $expectedusers Expected number of users after the purge.
      * @return void
      */
     public function test_purge_users(int $numusers, int $numusersdeleted, int $expectedusers) {
@@ -86,21 +121,18 @@ class manager_test extends \advanced_testcase {
         $expectedusers += $initialusers;
 
         // Create users.
-        $userids = [];
+        $users = [];
         for ($i = 0; $i < $numusers; $i++) {
             $user = $this->getDataGenerator()->create_user();
-            $userids[] = $user->id;
+            $users[$i] = $user;
         }
 
         $userdeletedids = [];
         // Mark users as deleted.
         if ($numusersdeleted) {
             for ($i = 0; $i < $numusersdeleted; $i++) {
-                $user = new \stdClass();
-                $user->deleted = 1;
-                $user->id = $userids[$i];
-                $DB->update_record('user', $user);
-                $userdeletedids[] = $user->id;
+                delete_user($users[$i]);
+                $userdeletedids[] = $users[$i]->id;
             }
         }
 

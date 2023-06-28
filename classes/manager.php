@@ -24,18 +24,32 @@ namespace tool_purgeusers;
  * @copyright   2023 Victor Deniz <victor@moodle.com>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class manager
-{
+class manager {
 
-    // Table to check records for activity.
-    const TABLECHECK = '1';
+    /** @var int TABLECHECK Table to check records for activity. */
+    private const TABLECHECK = 1;
 
-    // Table to backup records.
-    const TABLEBACKUP = '2';
+    /** @var int TABLEBACKUP Table with records to backup. */
+    private const TABLEBACKUP = 2;
+
+    /** @var int NOPURGE The user has been processed and is not being purged. */
+    private const NOPURGE = 0;
+
+    /** @var int SUSPENSIONNOTIFIED The user has been notified about the suspension. */
+    private const SUSPENSIONNOTIFIED = 1;
+
+    /** @var int SUSPENDED The user has been suspended. */
+    private const SUSPENDED = 2;
+
+    /** @var int DELETED The user has been deleted. */
+    private const DELETED = 3;
+
+    /** @var int MAX_USERS_PER_QUERY Limit the number of users to be deleted per execution to avoid timeouts or memory issues. */
+    private const MAX_USERS_PER_QUERY = 1000;
 
     /**
      * Moodle components to check for activity. The format is:
-     * Component is the name of the plugin type or subsytem to check {@see lib/components.json}.
+     * Component is the name of the plugin type or subsytem to check (lib/components.json).
      * Type is the name of the plugin or "subsystem" for core subsystems.
      * Table is the name of the table to check for activity.
      * Alias is the alias to use for the table.
@@ -104,6 +118,22 @@ class manager
                     'action' => self::TABLECHECK,
                 ]
             ],
+            'quiz' => [
+                [
+                    'table' => 'quiz_attempts',
+                    'alias' => 'qa',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+            ],
+            'survey' => [
+                [
+                    'table' => 'survey_answers',
+                    'alias' => 'san',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+            ],
         ],
         'badges' => [
             'subsystem' => [
@@ -155,14 +185,6 @@ class manager
         ],
     ];
 
-    const NODELETE = 0;
-    const SUPENSIONNOTIFIED = 1;
-    const SUSPENDED = 2;
-    const DELETED = 3;
-
-    // We need to limit the number of users to be deleted per execution to avoid timeouts or memory issues.
-    const MAX_USERS_PER_QUERY = 1000;
-
     /** @var boolean $backup Keep a backup of the deleted records. */
     private bool $backup;
 
@@ -201,7 +223,7 @@ class manager
              LEFT JOIN {tool_purgeusers_log} l ON l.userid = u.id
                        AND l.status != ?
                  WHERE u.deleted = 1";
-        $rs = $DB->get_recordset_sql($sql, [self::NODELETE], 0, self::MAX_USERS_PER_QUERY);
+        $rs = $DB->get_recordset_sql($sql, [self::NOPURGE], 0, self::MAX_USERS_PER_QUERY);
 
         if (!$rs->valid()) {
             // If there are no deleted users, we can stop here.
@@ -238,7 +260,7 @@ class manager
         foreach ($userswithcontent as $userid) {
             if ($this->logging) {
                 // Log the user status.
-                $this->log($userid, self::NODELETE);
+                $this->log($userid, self::NOPURGE);
             }
         }
         // Log users to not delete, likely they have content on the site.
