@@ -185,10 +185,10 @@ class manager {
         ],
     ];
 
-    /** @var boolean $backup Keep a backup of the deleted records. */
+    /** @var bool $backup Keep a backup of the deleted records. */
     private bool $backup;
 
-    /** @var boolean $logging Logs the user status. */
+    /** @var bool $logging Logs the user status. */
     private bool $logging;
 
     /**
@@ -204,11 +204,14 @@ class manager {
     }
 
     /**
-     * Get the users to purge.
+     * Check if a users have activity on the site.
      *
-     * @return int[] The ids of the users to purge.
+     * Check if the users have records in the tables of the components.
+     * To avoid a huge SQL query, queries by component are performed.
+     * @param int[] $userlist List of user ids to check for activity.
+     * @return array
      */
-    public function get_users_to_purge(): array {
+    private function check_activity (array $userlist): array {
         global $DB;
 
         // SQL joins.
@@ -217,20 +220,7 @@ class manager {
         // SQL where clause.
         $sqlwhere = '';
 
-        // Look for deleted users.
-        $sql = "SELECT u.id
-                  FROM {user} u
-             LEFT JOIN {tool_purgeusers_log} l ON l.userid = u.id
-                       AND l.status != ?
-                 WHERE u.deleted = 1";
-        $rs = $DB->get_recordset_sql($sql, [self::NOPURGE], 0, self::MAX_USERS_PER_QUERY);
-
-        if (!$rs->valid()) {
-            // If there are no deleted users, we can stop here.
-            return [];
-        }
-        $initialusers = array_keys(iterator_to_array($rs, true));
-        [$insql, $inparams] = $DB->get_in_or_equal($initialusers);
+        $inparams = $userlist;
 
         foreach (self::COMPONENTS as $component) {
             foreach ($component as $type) {
@@ -256,16 +246,46 @@ class manager {
                 $sqlwhere = '';
             }
         }
-        $userswithcontent = array_diff($initialusers, $inparams);
-        foreach ($userswithcontent as $userid) {
-            if ($this->logging) {
-                // Log the user status.
-                $this->log($userid, self::NOPURGE);
-            }
-        }
-        // Log users to not delete, likely they have content on the site.
-        // At this point $inparams contains the list of users that don't have activity.
+
         return $inparams;
+    }
+
+    /**
+     * Get the users to purge.
+     *
+     * The users to purge are the users that have been deleted and don't have activity on the site.
+     * The users that have been deleted and have activity on the site will be logged and won't be purged.
+     *
+     * @return int[] The ids of the users to purge.
+     */
+    public function get_users_to_purge(): array {
+        global $DB;
+
+        // Look for deleted users.
+        $sql = "SELECT u.id
+                  FROM {user} u
+             LEFT JOIN {tool_purgeusers_log} l ON l.userid = u.id
+                       AND l.status != ?
+                 WHERE u.deleted = 1";
+        $rs = $DB->get_recordset_sql($sql, [self::NOPURGE], 0, self::MAX_USERS_PER_QUERY);
+
+        if (!$rs->valid()) {
+            // If there are no deleted users, we can stop here.
+            return [];
+        }
+        $initialusers = array_keys(iterator_to_array($rs, true));
+
+        // Check if the users have activity on the site.
+        $usersnocontent = $this->check_activity($initialusers);
+
+        $userswithcontent = array_diff($initialusers, $usersnocontent);
+        foreach ($userswithcontent as $userid) {
+            // Log the users with content to not delete, so they won't be checked again.
+            $this->log($userid, self::NOPURGE);
+        }
+
+        // At this point $inparams contains the list of users that don't have activity.
+        return $usersnocontent;
     }
 
     /**
@@ -286,6 +306,8 @@ class manager {
      * Purge a user.
      *
      * Remove the user record from the database.
+     * If the backup is enabled, a backup of the user data will be created.
+     * If the logging is enabled, the user status will be logged.
      *
      * @param int $userid The user id.
      * @return void
