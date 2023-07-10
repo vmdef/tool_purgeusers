@@ -23,13 +23,30 @@ The Inactive User Account Manager plugin is a powerful tool for Moodle administr
 3. Go to "Site administration" > "Notifications" and follow the on-screen instructions to complete the plugin installation.
 4. Configure the plugin settings according to your requirements.
 
+### Purging Deleted User Records (Command Line Script)
+
+To further manage and clean up the database by purging records of users already deleted, you can utilize a command line script provided by the Inactive User Account Manager plugin. This script manually purges the records of deleted users, ensuring they do not have any associated content and provides logging and backup functionality. Follow the instructions below to use the script:
+
+1. Ensure you have access to the command line interface (CLI) of your Moodle server.
+2. Locate the command line script named `purgedeletedusers.php` in the plugin's installation directory (*admin/tool/purgeusers/cli/purgedeletedusers.php*).
+3. Execute the script using the following command:
+```shell
+$ php admin/tool/purgeusers/cli/purgedeletedusers.php
+```
+4. The script will scan the database for deleted user records and perform the following actions for each record:
+- Check if the deleted user has any associated content, such as forum posts or assignments.
+- If the user has associated content, the script will log this information and skip the deletion process.
+- If the user does not have any associated content, the script will permanently purge the user's record from the database.
+5. If logging and backup are enabled, the script will, by default, generate a log file that provides details of the actions performed. This includes information on which records were purged and which ones were skipped due to associated content. Additionally, a copy of each deleted record will be saved for future recovery.
+6. It is recommended to periodically review the generated log file to ensure the purging process is running as expected and to monitor any skipped records that may require manual intervention.
+
+The components to check for activity are defined in code as an array in the manager class (*admin/tool/purgeusers/classes/manager.php*). In a next release, we intend to add this feature as a setting.
+
+**Note**: The `purgedeletedusers.php` script should be run manually as needed. It is advisable to schedule regular executions of the script, depending on your Moodle instance's requirements, to keep the database clean and optimized.
+
 ### Purging Inactive User Accounts
 
-In the initial version of the plugin, inactive user accounts will be purged based on the following criteria:
-
-- User accounts registered more than six months ago with no activity since registration.
-
-Please note that this purging process will be triggered only once during the installation of the plugin to remove existing inactive user accounts. After that, the plugin will continue to manage inactive accounts based on the configured inactivity duration.
+We plan to develop this further in the next stage.
 
 ## Documentation
 
