@@ -37,20 +37,25 @@ require_once($CFG->libdir . '/clilib.php');
 // Get the cli options.
 list($options, $unrecognized) = cli_get_params(
     [
-        'help' => false
+        'help' => false,
+        'run' => false,
     ],
     [
-        'h' => 'help'
+        'h' => 'help',
+        'r' => 'run',
     ]
 );
 
-$help =
-    "
-Help message for tool_purgeusers cli script.
+$help = "Purge deleted users from the database.
 
-Please include a list of options and associated actions.
+Options:
+    -h --help                   Print this help.
+    -r --run                    Deletes the records from the database. If this option is not set, the script will run in dry mode.
 
-Please include an example of usage.
+Examples:
+
+    # php purgedeletedusers.php  --run
+        Deletes the records from the database.
 ";
 
 if ($unrecognized) {
@@ -63,7 +68,19 @@ if ($options['help']) {
     die();
 }
 
-// TODO: Check if the user has the required permissions to run this script.
 $manager = new manager();
 $users = $manager->get_users_to_purge();
-$manager->purge_users($users);
+
+if (empty($users)) {
+    cli_writeln('There are no users to purge.');
+    die();
+}
+
+if ($options['run']) {
+    $manager->purge_users($users);
+} else {
+    cli_writeln('The following users will be purged:');
+    foreach ($users as $user) {
+        cli_writeln($user);
+    }
+}
