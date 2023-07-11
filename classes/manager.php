@@ -274,6 +274,7 @@ class manager {
             return [];
         }
         $initialusers = array_keys(iterator_to_array($rs, true));
+        $rs->close();
 
         // Check if the users have activity on the site.
         $usersnocontent = $this->check_activity($initialusers);
@@ -368,16 +369,10 @@ class manager {
     private function log(int $userid, int $status) {
         global $DB;
 
-        if ($log = $DB->get_record('tool_purgeusers_log', ['userid' => $userid])) {
-            $log->status = $status;
-            $log->timestamp = time();
-            $DB->update_record('tool_purgeusers_log', $log);
-        } else {
-            $log = new \stdClass();
-            $log->userid = $userid;
-            $log->status = $status;
-            $log->timestamp = time();
-            $DB->insert_record('tool_purgeusers_log', $log);
-        }
+        $log = new \stdClass();
+        $log->userid = $userid;
+        $log->status = $status;
+        $log->timestamp = time();
+        $DB->insert_record('tool_purgeusers_log', $log);
     }
 }
