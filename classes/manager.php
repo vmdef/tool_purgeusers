@@ -265,8 +265,9 @@ class manager {
         $sql = "SELECT u.id
                   FROM {user} u
              LEFT JOIN {tool_purgeusers_log} l ON l.userid = u.id
-                       AND l.status != ?
-                 WHERE u.deleted = 1";
+                       AND l.status = ?
+                 WHERE u.deleted = 1
+                       AND l.id IS NULL";
         $rs = $DB->get_recordset_sql($sql, [self::NOPURGE], 0, self::MAX_USERS_PER_QUERY);
 
         if (!$rs->valid()) {
@@ -369,10 +370,15 @@ class manager {
     private function log(int $userid, int $status) {
         global $DB;
 
-        $log = new \stdClass();
-        $log->userid = $userid;
-        $log->status = $status;
-        $log->timestamp = time();
-        $DB->insert_record('tool_purgeusers_log', $log);
+        if ($log = $DB->get_record('tool_purgeusers_log', ['userid' => $userid, 'status' => $status])) {
+            $log->timestamp = time();
+            $DB->update_record('tool_purgeusers_log', $log);
+        } else {
+            $log = new \stdClass();
+            $log->userid = $userid;
+            $log->status = $status;
+            $log->timestamp = time();
+            $DB->insert_record('tool_purgeusers_log', $log);
+        }
     }
 }
