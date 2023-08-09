@@ -49,7 +49,7 @@ class manager {
 
     /**
      * Moodle components to check for activity. The format is:
-     * Component is the name of the plugin type or subsytem to check (lib/components.json).
+     * Component is the name of the plugin type or subsystem to check (lib/components.json).
      * Type is the name of the plugin or "subsystem" for core subsystems.
      * Table is the name of the table to check for activity.
      * Alias is the alias to use for the table.
@@ -67,6 +67,60 @@ class manager {
      * ],
      */
     const COMPONENTS = [
+        'local' => [
+            'plugins' => [
+                [
+                    'table' => 'local_plugins_contributor',
+                    'alias' => 'lpc',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+                [
+                    'table' => 'local_plugins_log',
+                    'alias' => 'lpl',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+                [
+                    'table' => 'local_plugins_review',
+                    'alias' => 'lpr',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+                [
+                    'table' => 'local_plugins_set_plugin',
+                    'alias' => 'lpsp',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+                [
+                    'table' => 'local_plugins_vers',
+                    'alias' => 'lpv',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+            ],
+        ],
+        'dev' => [
+                [
+                    'table' => 'dev_activity',
+                    'alias' => 'd',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+                [
+                    'table' => 'dev_git_commits',
+                    'alias' => 'dgc',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+                [
+                    'table' => 'dev_git_user_aliases',
+                    'alias' => 'dgua',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+        ],
         'mod' => [
             'assign' => [
                 [
