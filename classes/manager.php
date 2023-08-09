@@ -68,6 +68,26 @@ class manager {
      */
     const COMPONENTS = [
         'local' => [
+            'dev' => [
+                [
+                    'table' => 'dev_activity',
+                    'alias' => 'd',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+                [
+                    'table' => 'dev_git_commits',
+                    'alias' => 'dgc',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+                [
+                    'table' => 'dev_git_user_aliases',
+                    'alias' => 'dgua',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+            ],
             'plugins' => [
                 [
                     'table' => 'local_plugins_contributor',
@@ -100,26 +120,6 @@ class manager {
                     'action' => self::TABLECHECK,
                 ],
             ],
-        ],
-        'dev' => [
-                [
-                    'table' => 'dev_activity',
-                    'alias' => 'd',
-                    'field' => 'userid',
-                    'action' => self::TABLECHECK,
-                ],
-                [
-                    'table' => 'dev_git_commits',
-                    'alias' => 'dgc',
-                    'field' => 'userid',
-                    'action' => self::TABLECHECK,
-                ],
-                [
-                    'table' => 'dev_git_user_aliases',
-                    'alias' => 'dgua',
-                    'field' => 'userid',
-                    'action' => self::TABLECHECK,
-                ],
         ],
         'mod' => [
             'assign' => [
@@ -276,11 +276,17 @@ class manager {
 
         $inparams = $userlist;
 
-        foreach (self::COMPONENTS as $component) {
-            foreach ($component as $type) {
+        foreach (self::COMPONENTS as $type => $components) {
+            foreach ($components as $name => $tables) {
+                if ($name !== 'subsystem') {
+                    if (!\core_plugin_manager::instance()->get_plugin_info($type.'_'.$name)) {
+                        // If the plugin is not installed, we can skip it.
+                        continue;
+                    }
+                }
                 $sql = "SELECT u.id
                           FROM {user} u";
-                foreach ($type as $table) {
+                foreach ($tables as $table) {
                     $sqljoins .= "
                             LEFT JOIN {{$table['table']}} {$table['alias']}
                                 ON {$table['alias']}.{$table['field']} = u.id";
