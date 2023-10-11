@@ -25,7 +25,6 @@ namespace tool_purgeusers;
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class manager {
-
     /** @var int TABLECHECK Table to check records for activity. */
     private const TABLECHECK = 1;
 
@@ -43,6 +42,9 @@ class manager {
 
     /** @var int DELETED The user has been deleted. */
     private const DELETED = 3;
+
+    /** @var int RESTORED The user has been restored. */
+    private const RESTORED = 4;
 
     /** @var int MAX_USERS_PER_QUERY Limit the number of users to be deleted per execution to avoid timeouts or memory issues. */
     private const MAX_USERS_PER_QUERY = 1000;
@@ -186,7 +188,7 @@ class manager {
                     'alias' => 'fd2',
                     'field' => 'usermodified',
                     'action' => self::TABLECHECK,
-                ]
+                ],
             ],
             'quiz' => [
                 [
@@ -281,7 +283,7 @@ class manager {
      * @param int[] $userlist List of user ids to check for activity.
      * @return array
      */
-    private function check_activity (array $userlist): array {
+    private function check_activity(array $userlist): array {
         global $DB;
 
         // SQL joins.
@@ -295,7 +297,7 @@ class manager {
         foreach (self::COMPONENTS as $type => $components) {
             foreach ($components as $name => $tables) {
                 if ($name !== 'subsystem') {
-                    if (!\core_plugin_manager::instance()->get_plugin_info($type.'_'.$name)) {
+                    if (!\core_plugin_manager::instance()->get_plugin_info($type . '_' . $name)) {
                         // If the plugin is not installed, we can skip it.
                         continue;
                     }
@@ -381,6 +383,37 @@ class manager {
     }
 
     /**
+     * Restore a list of users.
+     *
+     * Restore the user records from the backup table to the user table.
+     * If the logging is enabled, the user status will be logged.
+     *
+     * @param int[] $userids The user ids.
+     * @return void
+     */
+    public function restore_users(array $userids) {
+
+        foreach ($userids as $userid) {
+            $this->restore_user($userid);
+        }
+    }
+
+    private function restore_user(int $userid) {
+        global $DB;
+
+            // Restore the user record from the backup table.
+        if ($backup = $DB->get_record('tool_purgeusers_backup', ['tablename' => 'user', 'tableid' => $userid])) {
+            $record = json_decode($backup->record);
+            $DB->import_record('user', $record);
+
+            if ($this->logging) {
+                // Log the user restoration.
+                $this->log($userid, self::RESTORED);
+            }
+        }
+    }
+
+    /**
      * Purge a user.
      *
      * Remove the user record from the database.
@@ -445,6 +478,7 @@ class manager {
      * - SUPENSIONNOTIFIED: The user has been notified about the suspension.
      * - SUSPENDED: The user has been suspended.
      * - DELETED: The user has been deleted.
+     * - RESTORED: The user has been restored.
      *
      * @param int $userid The user id.
      * @param int $status The user status.
