@@ -70,13 +70,13 @@ class manager {
         'tool' => [
             'dataprivacy' => [
                 [
-                    'table' => 'tool_dataprivacy_datarequest',
+                    'table' => 'tool_dataprivacy_request',
                     'alias' => 'tdd',
                     'field' => 'userid',
                     'action' => self::TABLECHECK,
                 ],
                 [
-                    'table' => 'tool_dataprivacy_datarequest',
+                    'table' => 'tool_dataprivacy_request',
                     'alias' => 'tdd2',
                     'field' => 'requestedby',
                     'action' => self::TABLECHECK,
@@ -420,14 +420,21 @@ class manager {
         global $DB;
 
         $record = $DB->get_record($table, ['id' => $id], '*', MUST_EXIST);
-        // Before deleting the user, we need to create a backup of the record.
-        $backuprecord = new \stdClass();
-        $backuprecord->tablename = $table;
-        $backuprecord->userid = $userid;
-        $backuprecord->tableid = $id;
-        $backuprecord->timestamp = time();
-        $backuprecord->record = json_encode($record);
-        $DB->insert_record('tool_purgeusers_backup', $backuprecord);
+        $econdedrecord = json_encode($record);
+        // Before deleting the user, we need to create or update a backup of the record.
+        if ($backup = $DB->get_record('tool_purgeusers_backup', ['tablename' => $table, 'tableid' => $id, 'userid' => $userid])) {
+            $backup->timestamp = time();
+            $backup->record = $econdedrecord;
+            $DB->update_record('tool_purgeusers_backup', $backup);
+        } else {
+            $backuprecord = new \stdClass();
+            $backuprecord->tablename = $table;
+            $backuprecord->userid = $userid;
+            $backuprecord->tableid = $id;
+            $backuprecord->timestamp = time();
+            $backuprecord->record = $econdedrecord;
+            $DB->insert_record('tool_purgeusers_backup', $backuprecord);
+        }
     }
 
     /**
