@@ -26,7 +26,6 @@ namespace tool_purgeusers;
  * @coversDefaultClass \tool_purgeusers\manager
  */
 class manager_test extends \advanced_testcase {
-
     /**
      * Test for the get_users_to_purge method.
      *
@@ -38,10 +37,13 @@ class manager_test extends \advanced_testcase {
      * @param int $expecteduserstopurge Expected number of users to purge.
      * @return void
      */
-    public function test_get_users_to_purge(int $numusers, int $numusersdeleted, int $numuserscontent , int $expecteduserstopurge) {
+    public function test_get_users_to_purge(int $numusers, int $numusersdeleted, int $numuserscontent, int $expecteduserstopurge) {
         global $DB;
 
         $this->resetAfterTest();
+
+        // Disable automatic creation of delete data requests.
+        set_config('automaticdeletionrequests', 0, 'tool_dataprivacy');
 
         $manager = new manager();
 
@@ -79,7 +81,7 @@ class manager_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function get_users_to_purge_provider(): array {
+    public static function get_users_to_purge_provider(): array {
         return [
             'No users to delete' => [
                 'numusers' => 10,
@@ -117,6 +119,9 @@ class manager_test extends \advanced_testcase {
 
         $this->resetAfterTest();
 
+        // Disable automatic creation of delete data requests.
+        set_config('automaticdeletionrequests', 0, 'tool_dataprivacy');
+
         $initialusers = $DB->count_records('user');
         $expectedusers += $initialusers;
 
@@ -150,7 +155,7 @@ class manager_test extends \advanced_testcase {
      *
      * @return array
      */
-    public function purge_users_provider(): array {
+    public static function purge_users_provider(): array {
         return [
             'No users deleted' => [
                 'numusers' => 10,

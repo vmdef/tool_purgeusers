@@ -50,7 +50,7 @@ $help = "Purge deleted users from the database.
 
 Options:
     -h --help                   Print this help.
-    -r --run                    Restore the records from the backup table to the user table. If this option is not set, the script will run in dry mode.
+    -r --run                    Restore records from backup table to user table. If not set, script will run in dry mode.
 
 Examples:
 

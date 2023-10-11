@@ -25,6 +25,9 @@ The Inactive User Account Manager plugin is a powerful tool for Moodle administr
 
 ### Purging Deleted User Records (Command Line Script)
 
+> [!IMPORTANT]
+> Please ensure that the 'Create automatic data deletion requests' setting in Site administration > Users > Privacy and policies > Privacy settings is disabled before running this script. Otherwise, each purged user may trigger a new data deletion request, which could result in errors when checking the 'Data requests' page.
+
 To further manage and clean up the database by purging records of users already deleted, you can utilize a command line script provided by the Inactive User Account Manager plugin. This script manually purges the records of deleted users, ensuring they do not have any associated content and provides logging and backup functionality. Follow the instructions below to use the script:
 
 1. Ensure you have access to the command line interface (CLI) of your Moodle server.

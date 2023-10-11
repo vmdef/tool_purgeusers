@@ -398,6 +398,14 @@ class manager {
         }
     }
 
+    /** Restore a user.
+     *
+     * Restore the user record from the backup table to the user table.
+     * If the logging is enabled, the user status will be logged.
+     *
+     * @param int $userid The user id.
+     * @return void
+     */
     private function restore_user(int $userid) {
         global $DB;
 
