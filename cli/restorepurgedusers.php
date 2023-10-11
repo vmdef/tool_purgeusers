@@ -84,6 +84,8 @@ if ($options['run']) {
 } else {
     cli_writeln('The following users will be restored:');
     foreach ($users as $user) {
-        cli_writeln($user);
+        if ($DB->record_exists('tool_purgeusers_backup', ['userid' => $user])) {
+            cli_writeln($user);
+        }
     }
 }
