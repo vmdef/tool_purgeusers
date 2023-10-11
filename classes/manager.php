@@ -67,6 +67,22 @@ class manager {
      * ],
      */
     const COMPONENTS = [
+        'tool' => [
+            'dataprivacy' => [
+                [
+                    'table' => 'tool_dataprivacy_datarequest',
+                    'alias' => 'tdd',
+                    'field' => 'userid',
+                    'action' => self::TABLECHECK,
+                ],
+                [
+                    'table' => 'tool_dataprivacy_datarequest',
+                    'alias' => 'tdd2',
+                    'field' => 'requestedby',
+                    'action' => self::TABLECHECK,
+                ],
+            ],
+        ],
         'local' => [
             'dev' => [
                 [
